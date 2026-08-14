@@ -290,6 +290,7 @@ func (e *Executor) runProjection(p *plan, rows []*joinRow) (*QueryResult, error)
 
 	result := &QueryResult{}
 	first := true
+	srcRows := make([]*joinRow, 0, len(rows))
 	for _, jr := range rows {
 		cols, tps, r, err := e.projectRow(p, jr, nil)
 		if err != nil {
@@ -301,29 +302,42 @@ func (e *Executor) runProjection(p *plan, rows []*joinRow) (*QueryResult, error)
 			first = false
 		}
 		result.Rows = append(result.Rows, r[0])
+		srcRows = append(srcRows, jr)
 	}
 
 	if p.distinct {
-		result = distinctRows(result)
+		result, srcRows = distinctRowsWithSource(result, srcRows)
 	}
 
-	e.applyOrderBySimple(p, result, rows)
+	e.applyOrderBySimple(p, result, srcRows)
 	applyLimitOffset(p, result)
 
 	return result, nil
 }
 
-func distinctRows(r *QueryResult) *QueryResult {
+// distinctRowsWithSource deduplicates the result rows, keeping the first
+// occurrence of each distinct row. It returns the surviving source records
+// (src) alongside the deduplicated rows, aligned by index, so that a later
+// ORDER BY can evaluate against the record that actually produced each kept
+// row. Without this pairing, DISTINCT would drop rows from result.Rows while
+// leaving src at its original length, so ORDER BY would re-pair each kept row
+// with an unrelated source record by index and sort on the wrong key.
+func distinctRowsWithSource[T any](r *QueryResult, src []T) (*QueryResult, []T) {
 	seen := make(map[string]bool)
-	var newRows [][]types.Value
-	for _, row := range r.Rows {
+	newRows := make([][]types.Value, 0, len(r.Rows))
+	newSrc := make([]T, 0, len(src))
+	for i, row := range r.Rows {
 		key := rowKey(row)
-		if !seen[key] {
-			seen[key] = true
-			newRows = append(newRows, row)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		newRows = append(newRows, row)
+		if i < len(src) {
+			newSrc = append(newSrc, src[i])
 		}
 	}
-	return &QueryResult{Columns: r.Columns, Types: r.Types, Rows: newRows}
+	return &QueryResult{Columns: r.Columns, Types: r.Types, Rows: newRows}, newSrc
 }
 
 func rowKey(row []types.Value) string {

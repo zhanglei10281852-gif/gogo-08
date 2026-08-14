@@ -1,0 +1,160 @@
+Go result repository container validation
+task_id: 8
+task_type: bugfix
+platform: linux/amd64
+image: gomark-task-8-amd64-parent:6c7a552a2c66
+started_at: 2026-08-14T20:51:45.285Z
+finished_at: 2026-08-14T20:52:31.028Z
+status: pass
+verification_1: expected_exit=1; actual_exit=1; matched=true; command=go test ./internal/executor -run "^TestDistinctOrderByKeepsSourceRows$" -count=1 -v
+
+===== command 1 =====
+phase: bug_reproduction
+$ docker run --rm --network none --platform linux/amd64 --mount type=bind,source=E:\gomark\tmp\task-package-8-2c9c4ca8-b206-4b8d-b620-fcebbcfd7a0c\trusted-test.patch,target=/tmp/gomark-trusted-test.patch,readonly -e GOTOOLCHAIN=local -e GOPROXY=off -e GOSUMDB=off gomark-task-8-amd64-parent:6c7a552a2c66 bash -c set -o pipefail
+git apply --check /tmp/gomark-trusted-test.patch >/dev/null || exit 97
+git apply /tmp/gomark-trusted-test.patch >/dev/null || exit 98
+cd '/app'
+echo "$ go test ./internal/executor -run \"^TestDistinctOrderByKeepsSourceRows$\" -count=1 -v"
+go test ./internal/executor -run "^TestDistinctOrderByKeepsSourceRows$" -count=1 -v
+cwd: E:\gomark\tmp\task-package-8-2c9c4ca8-b206-4b8d-b620-fcebbcfd7a0c\parent-source
+actual_exit: 1
+--- stdout ---
+$ go test ./internal/executor -run "^TestDistinctOrderByKeepsSourceRows$" -count=1 -v
+=== RUN   TestDistinctOrderByKeepsSourceRows
+=== RUN   TestDistinctOrderByKeepsSourceRows/adjacent_and_non-adjacent_duplicates_ordered_by_projected_column_ascending
+    distinct_order_test.go:59: 
+        	Error Trace:	/app/internal/executor/distinct_order_test.go:59
+        	Error:      	Not equal: 
+        	            	expected: [][]string{[]string{"alpha"}, []string{"bravo"}, []string{"charlie"}, []string{"delta"}}
+        	            	actual  : [][]string{[]string{"bravo"}, []string{"delta"}, []string{"charlie"}, []string{"alpha"}}
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -2,6 +2,6 @@
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "alpha"
+        	            	+  (string) (len=5) "bravo"
+        	            	  },
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "bravo"
+        	            	+  (string) (len=5) "delta"
+        	            	  },
+        	            	@@ -11,3 +11,3 @@
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "delta"
+        	            	+  (string) (len=5) "alpha"
+        	            	  }
+        	Test:       	TestDistinctOrderByKeepsSourceRows/adjacent_and_non-adjacent_duplicates_ordered_by_projected_column_ascending
+=== RUN   TestDistinctOrderByKeepsSourceRows/projected_column_descending
+    distinct_order_test.go:59: 
+        	Error Trace:	/app/internal/executor/distinct_order_test.go:59
+        	Error:      	Not equal: 
+        	            	expected: [][]string{[]string{"delta"}, []string{"charlie"}, []string{"bravo"}, []string{"alpha"}}
+        	            	actual  : [][]string{[]string{"charlie"}, []string{"alpha"}, []string{"delta"}, []string{"bravo"}}
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1,2 +1,8 @@
+        	            	 ([][]string) (len=4) {
+        	            	+ ([]string) (len=1) {
+        	            	+  (string) (len=7) "charlie"
+        	            	+ },
+        	            	+ ([]string) (len=1) {
+        	            	+  (string) (len=5) "alpha"
+        	            	+ },
+        	            	  ([]string) (len=1) {
+        	            	@@ -5,9 +11,3 @@
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=7) "charlie"
+        	            	- },
+        	            	- ([]string) (len=1) {
+        	            	   (string) (len=5) "bravo"
+        	            	- },
+        	            	- ([]string) (len=1) {
+        	            	-  (string) (len=5) "alpha"
+        	            	  }
+        	Test:       	TestDistinctOrderByKeepsSourceRows/projected_column_descending
+=== RUN   TestDistinctOrderByKeepsSourceRows/unprojected_column_ascending
+    distinct_order_test.go:59: 
+        	Error Trace:	/app/internal/executor/distinct_order_test.go:59
+        	Error:      	Not equal: 
+        	            	expected: [][]string{[]string{"delta"}, []string{"alpha"}, []string{"charlie"}, []string{"bravo"}}
+        	            	actual  : [][]string{[]string{"alpha"}, []string{"bravo"}, []string{"charlie"}, []string{"delta"}}
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -2,6 +2,6 @@
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "delta"
+        	            	+  (string) (len=5) "alpha"
+        	            	  },
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "alpha"
+        	            	+  (string) (len=5) "bravo"
+        	            	  },
+        	            	@@ -11,3 +11,3 @@
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "bravo"
+        	            	+  (string) (len=5) "delta"
+        	            	  }
+        	Test:       	TestDistinctOrderByKeepsSourceRows/unprojected_column_ascending
+=== RUN   TestDistinctOrderByKeepsSourceRows/unprojected_column_descending
+    distinct_order_test.go:59: 
+        	Error Trace:	/app/internal/executor/distinct_order_test.go:59
+        	Error:      	Not equal: 
+        	            	expected: [][]string{[]string{"bravo"}, []string{"charlie"}, []string{"alpha"}, []string{"delta"}}
+        	            	actual  : [][]string{[]string{"delta"}, []string{"charlie"}, []string{"bravo"}, []string{"alpha"}}
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -2,3 +2,3 @@
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "bravo"
+        	            	+  (string) (len=5) "delta"
+        	            	  },
+        	            	@@ -8,6 +8,6 @@
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "alpha"
+        	            	+  (string) (len=5) "bravo"
+        	            	  },
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "delta"
+        	            	+  (string) (len=5) "alpha"
+        	            	  }
+        	Test:       	TestDistinctOrderByKeepsSourceRows/unprojected_column_descending
+=== RUN   TestDistinctOrderByKeepsSourceRows/order_before_limit
+    distinct_order_test.go:59: 
+        	Error Trace:	/app/internal/executor/distinct_order_test.go:59
+        	Error:      	Not equal: 
+        	            	expected: [][]string{[]string{"delta"}, []string{"alpha"}}
+        	            	actual  : [][]string{[]string{"alpha"}, []string{"bravo"}}
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -2,6 +2,6 @@
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "delta"
+        	            	+  (string) (len=5) "alpha"
+        	            	  },
+        	            	  ([]string) (len=1) {
+        	            	-  (string) (len=5) "alpha"
+        	            	+  (string) (len=5) "bravo"
+        	            	  }
+        	Test:       	TestDistinctOrderByKeepsSourceRows/order_before_limit
+--- FAIL: TestDistinctOrderByKeepsSourceRows (0.00s)
+    --- FAIL: TestDistinctOrderByKeepsSourceRows/adjacent_and_non-adjacent_duplicates_ordered_by_projected_column_ascending (0.00s)
+    --- FAIL: TestDistinctOrderByKeepsSourceRows/projected_column_descending (0.00s)
+    --- FAIL: TestDistinctOrderByKeepsSourceRows/unprojected_column_ascending (0.00s)
+    --- FAIL: TestDistinctOrderByKeepsSourceRows/unprojected_column_descending (0.00s)
+    --- FAIL: TestDistinctOrderByKeepsSourceRows/order_before_limit (0.00s)
+FAIL
+FAIL	csvsql/internal/executor	0.005s
+FAIL
+
+--- stderr ---
+

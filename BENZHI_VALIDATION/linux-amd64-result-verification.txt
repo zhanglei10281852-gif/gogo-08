@@ -1,0 +1,57 @@
+Go result repository container validation
+task_id: 8
+task_type: bugfix
+platform: linux/amd64
+image: gomark-task-8-amd64:6c7a552a2c66
+started_at: 2026-08-14T20:51:45.285Z
+finished_at: 2026-08-14T20:52:31.028Z
+status: pass
+verification_1: expected_exit=0; actual_exit=0; matched=true; command=go test ./internal/executor -run "^TestDistinctOrderByKeepsSourceRows$" -count=1 -v
+verification_2: expected_exit=0; actual_exit=0; matched=true; command=go test -buildvcs=false -count=1 ./...
+
+===== command 1 =====
+phase: result_verification
+$ docker run --rm --network none --platform linux/amd64 --mount type=bind,source=E:\gomark\tmp\task-package-8-2c9c4ca8-b206-4b8d-b620-fcebbcfd7a0c\trusted-test.patch,target=/tmp/gomark-trusted-test.patch,readonly -e GOTOOLCHAIN=local -e GOPROXY=off -e GOSUMDB=off gomark-task-8-amd64:6c7a552a2c66 bash -c set -o pipefail
+git apply --check /tmp/gomark-trusted-test.patch >/dev/null || exit 97
+git apply /tmp/gomark-trusted-test.patch >/dev/null || exit 98
+go test ./internal/executor -run "^TestDistinctOrderByKeepsSourceRows$" -count=1 -v
+cwd: E:\gomark\tmp\task-package-8-2c9c4ca8-b206-4b8d-b620-fcebbcfd7a0c\source
+actual_exit: 0
+--- stdout ---
+=== RUN   TestDistinctOrderByKeepsSourceRows
+=== RUN   TestDistinctOrderByKeepsSourceRows/adjacent_and_non-adjacent_duplicates_ordered_by_projected_column_ascending
+=== RUN   TestDistinctOrderByKeepsSourceRows/projected_column_descending
+=== RUN   TestDistinctOrderByKeepsSourceRows/unprojected_column_ascending
+=== RUN   TestDistinctOrderByKeepsSourceRows/unprojected_column_descending
+=== RUN   TestDistinctOrderByKeepsSourceRows/order_before_limit
+--- PASS: TestDistinctOrderByKeepsSourceRows (0.00s)
+    --- PASS: TestDistinctOrderByKeepsSourceRows/adjacent_and_non-adjacent_duplicates_ordered_by_projected_column_ascending (0.00s)
+    --- PASS: TestDistinctOrderByKeepsSourceRows/projected_column_descending (0.00s)
+    --- PASS: TestDistinctOrderByKeepsSourceRows/unprojected_column_ascending (0.00s)
+    --- PASS: TestDistinctOrderByKeepsSourceRows/unprojected_column_descending (0.00s)
+    --- PASS: TestDistinctOrderByKeepsSourceRows/order_before_limit (0.00s)
+PASS
+ok  	csvsql/internal/executor	0.004s
+
+--- stderr ---
+
+
+===== command 2 =====
+phase: result_verification
+$ docker run --rm --network none --platform linux/amd64 --mount type=bind,source=E:\gomark\tmp\task-package-8-2c9c4ca8-b206-4b8d-b620-fcebbcfd7a0c\trusted-test.patch,target=/tmp/gomark-trusted-test.patch,readonly -e GOTOOLCHAIN=local -e GOPROXY=off -e GOSUMDB=off gomark-task-8-amd64:6c7a552a2c66 bash -c set -o pipefail
+git apply --check /tmp/gomark-trusted-test.patch >/dev/null || exit 97
+git apply /tmp/gomark-trusted-test.patch >/dev/null || exit 98
+go test -buildvcs=false -count=1 ./...
+cwd: E:\gomark\tmp\task-package-8-2c9c4ca8-b206-4b8d-b620-fcebbcfd7a0c\source
+actual_exit: 0
+--- stdout ---
+?   	csvsql/cmd/csvsql	[no test files]
+?   	csvsql/internal/csv	[no test files]
+?   	csvsql/internal/formatter	[no test files]
+?   	csvsql/internal/lexer	[no test files]
+?   	csvsql/internal/parser	[no test files]
+?   	csvsql/internal/types	[no test files]
+ok  	csvsql/internal/executor	0.013s
+
+--- stderr ---
+

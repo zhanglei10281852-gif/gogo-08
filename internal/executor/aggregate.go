@@ -181,7 +181,7 @@ func (e *Executor) runAggregation(p *plan, rows []*joinRow) (*QueryResult, error
 	}
 
 	if p.distinct {
-		result = distinctRows(result)
+		result, outRows = distinctRowsWithSource(result, outRows)
 	}
 
 	e.applyOrderByAgg(p, result, outRows, aggCalls)
