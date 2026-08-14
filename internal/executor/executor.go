@@ -269,6 +269,11 @@ func exprDisplayName(r ExprRef) string {
 	}
 }
 
+type projectedRow struct {
+	values []types.Value
+	source *joinRow
+}
+
 func (e *Executor) runProjection(p *plan, rows []*joinRow) (*QueryResult, error) {
 	if len(rows) == 0 {
 		emptyViews := make(map[string]*rowView)
@@ -289,6 +294,7 @@ func (e *Executor) runProjection(p *plan, rows []*joinRow) (*QueryResult, error)
 	}
 
 	result := &QueryResult{}
+	projected := make([]projectedRow, 0, len(rows))
 	first := true
 	for _, jr := range rows {
 		cols, tps, r, err := e.projectRow(p, jr, nil)
@@ -300,30 +306,34 @@ func (e *Executor) runProjection(p *plan, rows []*joinRow) (*QueryResult, error)
 			result.Types = tps
 			first = false
 		}
-		result.Rows = append(result.Rows, r[0])
+		projected = append(projected, projectedRow{values: r[0], source: jr})
 	}
 
 	if p.distinct {
-		result = distinctRows(result)
+		projected = distinctProjectedRows(projected)
 	}
-
-	e.applyOrderBySimple(p, result, rows)
+	if err := e.applyOrderBySimple(p, projected); err != nil {
+		return nil, err
+	}
+	for _, output := range projected {
+		result.Rows = append(result.Rows, output.values)
+	}
 	applyLimitOffset(p, result)
 
 	return result, nil
 }
 
-func distinctRows(r *QueryResult) *QueryResult {
+func distinctProjectedRows(rows []projectedRow) []projectedRow {
 	seen := make(map[string]bool)
-	var newRows [][]types.Value
-	for _, row := range r.Rows {
-		key := rowKey(row)
+	unique := make([]projectedRow, 0, len(rows))
+	for _, row := range rows {
+		key := rowKey(row.values)
 		if !seen[key] {
 			seen[key] = true
-			newRows = append(newRows, row)
+			unique = append(unique, row)
 		}
 	}
-	return &QueryResult{Columns: r.Columns, Types: r.Types, Rows: newRows}
+	return unique
 }
 
 func rowKey(row []types.Value) string {
@@ -357,36 +367,39 @@ func applyLimitOffset(p *plan, result *QueryResult) {
 	}
 }
 
-func (e *Executor) applyOrderBySimple(p *plan, result *QueryResult, rows []*joinRow) {
+func (e *Executor) applyOrderBySimple(p *plan, rows []projectedRow) error {
 	if len(p.orderBy) == 0 {
-		return
+		return nil
 	}
 	type item struct {
-		row []types.Value
-		jr  *joinRow
+		row       projectedRow
+		orderKeys []types.Value
 	}
-	items := make([]item, len(result.Rows))
-	for i, r := range result.Rows {
-		items[i] = item{row: r, jr: rows[i]}
+	items := make([]item, len(rows))
+	for i, row := range rows {
+		items[i] = item{row: row, orderKeys: make([]types.Value, len(p.orderBy))}
+		for j, order := range p.orderBy {
+			value, err := e.evalExpr(order.expr, row.source, nil)
+			if err != nil {
+				return err
+			}
+			items[i].orderKeys[j] = value
+		}
 	}
 	sort.SliceStable(items, func(i, j int) bool {
-		for _, o := range p.orderBy {
-			vi, err1 := e.evalExpr(o.expr, items[i].jr, nil)
-			vj, err2 := e.evalExpr(o.expr, items[j].jr, nil)
-			if err1 != nil || err2 != nil {
-				return false
-			}
-			c := compareValues(vi, vj)
-			if c != 0 {
-				if o.desc {
-					return c > 0
+		for k, order := range p.orderBy {
+			comparison := compareValues(items[i].orderKeys[k], items[j].orderKeys[k])
+			if comparison != 0 {
+				if order.desc {
+					return comparison > 0
 				}
-				return c < 0
+				return comparison < 0
 			}
 		}
 		return false
 	})
-	for i, it := range items {
-		result.Rows[i] = it.row
+	for i, item := range items {
+		rows[i] = item.row
 	}
+	return nil
 }

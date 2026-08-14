@@ -176,15 +176,16 @@ func (e *Executor) runAggregation(p *plan, rows []*joinRow) (*QueryResult, error
 		}
 	}
 
-	for _, or_ := range outRows {
-		result.Rows = append(result.Rows, or_.vals)
-	}
-
 	if p.distinct {
-		result = distinctRows(result)
+		outRows = distinctOutRows(outRows)
 	}
 
-	e.applyOrderByAgg(p, result, outRows, aggCalls)
+	if err := e.applyOrderByAgg(p, outRows, aggCalls); err != nil {
+		return nil, err
+	}
+	for _, output := range outRows {
+		result.Rows = append(result.Rows, output.vals)
+	}
 	applyLimitOffset(p, result)
 
 	return result, nil
@@ -517,40 +518,52 @@ type outRow struct {
 	ar   aggRow
 }
 
-func (e *Executor) applyOrderByAgg(p *plan, result *QueryResult, outRows []outRow, calls []aggCallInfo) {
+func distinctOutRows(rows []outRow) []outRow {
+	seen := make(map[string]bool)
+	unique := make([]outRow, 0, len(rows))
+	for _, row := range rows {
+		key := rowKey(row.vals)
+		if !seen[key] {
+			seen[key] = true
+			unique = append(unique, row)
+		}
+	}
+	return unique
+}
+
+func (e *Executor) applyOrderByAgg(p *plan, rows []outRow, calls []aggCallInfo) error {
 	if len(p.orderBy) == 0 {
-		return
+		return nil
 	}
 	type item struct {
-		idx   int
-		vals  []types.Value
-		ar    aggRow
+		row       outRow
+		orderKeys []types.Value
 	}
-	items := make([]item, len(result.Rows))
-	for i := range result.Rows {
-		or_ := outRows[i]
-		items[i] = item{idx: i, vals: result.Rows[i], ar: or_.ar}
+	items := make([]item, len(rows))
+	for i, row := range rows {
+		items[i] = item{row: row, orderKeys: make([]types.Value, len(p.orderBy))}
+		for j, order := range p.orderBy {
+			value, err := e.evalAggregateExpr(order.expr, row.ar, p, calls)
+			if err != nil {
+				return err
+			}
+			items[i].orderKeys[j] = value
+		}
 	}
 	sort.SliceStable(items, func(a, b int) bool {
-		for _, o := range p.orderBy {
-			va, err1 := e.evalAggregateExpr(o.expr, items[a].ar, p, calls)
-			vb, err2 := e.evalAggregateExpr(o.expr, items[b].ar, p, calls)
-			if err1 != nil || err2 != nil {
-				return false
-			}
-			c := compareValues(va, vb)
-			if c != 0 {
-				if o.desc {
-					return c > 0
+		for i, order := range p.orderBy {
+			comparison := compareValues(items[a].orderKeys[i], items[b].orderKeys[i])
+			if comparison != 0 {
+				if order.desc {
+					return comparison > 0
 				}
-				return c < 0
+				return comparison < 0
 			}
 		}
 		return false
 	})
-	newRows := make([][]types.Value, len(result.Rows))
-	for i, it := range items {
-		newRows[i] = it.vals
+	for i, item := range items {
+		rows[i] = item.row
 	}
-	result.Rows = newRows
+	return nil
 }
